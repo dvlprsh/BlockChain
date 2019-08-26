@@ -1,0 +1,21 @@
+{
+  "name": "dnextproject1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "genkey": "node scripts/genkey.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bip39": "^3.0.2",
+    "jshashes": "^1.0.7",
+    "local-ipv4-address": "0.0.2",
+    "node-fetch": "^2.6.0",
+    "node-rsa": "^1.0.5",
+    "websocket": "^1.0.29"
+  }
+}
