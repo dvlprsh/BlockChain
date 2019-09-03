@@ -5,6 +5,10 @@ const Client = require("./Client");
 const Block = require("./block/Block");
 const utils=require("./utils");
 const {Worker} = require('worker_threads');
+
+const MemPool = require("./tx/MemPool");
+
+
 class Blockchain {
  static GENESIS_BLOCK = new Block(
  "0000000000000000000000000000000000000000000000000000000000000000",
@@ -17,6 +21,7 @@ class Blockchain {
  constructor() {
   this.blocks = [Blockchain.GENESIS_BLOCK];
   this.initializing = true;
+  this.memPool = new MemPool();
  }
 
 
@@ -40,6 +45,7 @@ class Blockchain {
   this.server.on("headers", this._onHeaders);
   this.server.on("getdata", this._onGetdata);
   this.server.on("block", this._onBlock);
+  this.server.on("tx", this._onTx); //0903
   this.server.start();
  };
 
@@ -50,6 +56,7 @@ class Blockchain {
   client.on("headers", this._onHeaders);
   client.on("getdata", this._onGetdata);
   client.on("block", this._onBlock);
+  client.on("tx", this._onTx); //0903
   client.on("connected", () => {
       client.sendMessage("getheaders", null);  //다른 노드들이랑 연결이 되자마자 getHeaders메세지 날림 (헤더 받아오기)
     });
@@ -168,6 +175,16 @@ class Blockchain {
    this.worker.terminate();
   }
  }
+
+ _onTx = (connection, data) => {
+  const tx = Tx.from(data);
+  if (tx.validate()) {
+   this.memPool.addTx(tx);
+   for (const client of this.clients) {
+    client.sendMessage("tx", tx);
+   }
+  }
+ };
 
 //connection--응답
  //블록 내용을 알고 있을 때에만 block 데이터를 보내줘야 함

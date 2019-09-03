@@ -41,13 +41,13 @@ class Client {
         });
         connection.on("message", this._onMessage);
 
+
+
         this.connection = connection;
         if (this.listeners["connected"]) {
             this.listeners["connected"](connection);
         }
-///////////
 
-        //this._sendMessage(connection);
     };
 
 
@@ -136,6 +136,8 @@ out*/
             this.listeners[data.type](this.connection, data.value);
         }
     };
+
+
 }
 
 

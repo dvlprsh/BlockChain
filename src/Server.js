@@ -104,6 +104,8 @@ class Server {
         // TODO
         utils.log("Server", "Disconnected (" + connection.remoteAddress + ")");
     };
+
+
 }
 
 module.exports = Server;
