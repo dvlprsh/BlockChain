@@ -3,6 +3,8 @@ const Bootstrap = require("./Bootstrap");
 const Server = require("./Server");
 const Client = require("./Client");
 const Block = require("./block/Block");
+const utils=require("./utils");
+const {Worker} = require('worker_threads');
 class Blockchain {
  static GENESIS_BLOCK = new Block(
  "0000000000000000000000000000000000000000000000000000000000000000",
@@ -25,10 +27,10 @@ class Blockchain {
   const myAddr = await localIpV4Address();
   const ipAddrs = await bootstrap.fetch();
   for (const addr of ipAddrs) {
-  if (myAddr !== addr) {
-  const client = this._startClient(addr);
-  this.clients.push(client);
-  }
+    if (myAddr !== addr) {
+      const client = this._startClient(addr);
+      this.clients.push(client);
+    }
   }
  };
 
@@ -49,8 +51,8 @@ class Blockchain {
   client.on("getdata", this._onGetdata);
   client.on("block", this._onBlock);
   client.on("connected", () => {
-  client.sendMessage("getheaders", null);  //다른 노드들이랑 연결이 되자마자 getHeaders메세지 날림 (헤더 받아오기)
-  });
+      client.sendMessage("getheaders", null);  //다른 노드들이랑 연결이 되자마자 getHeaders메세지 날림 (헤더 받아오기)
+    });
   client.connect();
   return client;
  };
@@ -95,8 +97,81 @@ class Blockchain {
   }
  };
 
+ _onGetdata = (connection, invs) => {
+  for (const inv of invs) {
+   const hash = inv.hash;
+   for (const block of this.blocks) {
+    if (block.hash() === hash && block.txs.length > 0) {
+     this.server.sendMessage(connection, "block", block);
+    }
+   }
+  }
+ };
+ _onBlock = (connection, data) => {
+  const newBlock = Block.from(data);
+  if (newBlock.validate()) {
+   const lastBlock = this.blocks[this.blocks.length - 1];
+   if (lastBlock.hash() === newBlock.prevHash) {
+    this._addBlock(newBlock);
+    if (this.initializing) {
+     this.initializing = false;
+     utils.log("Blockchain", "Finished downloading headers");
 
+     this.startMining();
 
+     const invs = [];
+     for (const block of this.blocks) {
+      invs.push({
+       type: 2,
+       hash: block.hash()
+      });
+     }
+     this.server.sendMessage(connection, "getdata", invs);
+    } else {
+     this.stopMining();
+     this.startMining();
+    }
+   } else if (!this.initializing) {
+    const hash = newBlock.hash();
+    for (let i = 0; i < this.blocks.length; i++) {
+     if (this.blocks[i].txs.length === 0 && this.blocks[i].hash() === hash) {
+      this.blocks[i] = newBlock;
+     }
+    }
+   }
+  }
+ };
+
+ startMining = () => {
+  this.stopMining();
+  utils.log("Blockchain", "Starting mining...");
+  this.worker = new Worker("./src/block/MiningWorker.js", {
+   workerData: {
+    blocks: this.blocks
+   }
+  });
+  this.worker.on("message", object => {
+   const newBlock = Block.from(object);
+   let lastBlock = this.blocks[this.blocks.length - 1];
+   if (lastBlock.hash() === newBlock.prevHash) {
+    this._addBlock(newBlock);
+    utils.log("Blockchain", "Mined: " + newBlock.hash());
+    for (const client of this.clients) {
+     client.sendMessage("block", newBlock);
+    }
+   }
+  })
+ };
+ stopMining = () => {
+  if (this.worker) {
+   utils.log("Blockchain", "Stopping mining...");
+   this.worker.terminate();
+  }
+ }
+
+//connection--응답
+ //블록 내용을 알고 있을 때에만 block 데이터를 보내줘야 함
+ /*
  _onGetdata = (connection, invs) => {
   for (const inv of invs) {
    const hash = inv.hash;
@@ -107,10 +182,14 @@ class Blockchain {
    }
   }
  };
-
+*/
+ /*
  _onBlock = (connection, data) => {
   const newBlock = Block.from(data);
   if (newBlock.validate()) {
+   //lastBlock--로컬의 마지막 블록
+
+
    const lastBlock = this.blocks[this.blocks.length - 1];
    if (lastBlock.hash() === newBlock.prevHash) {
     this._addBlock(newBlock);
@@ -127,7 +206,7 @@ class Blockchain {
      let curr_block;
      for(let i=0; i< this.blocks.length; i++){
       curr_block=Block.from(this.blocks[i]);
-      inv={type:2, hash: curr_block.hash()};
+      inv={type:2, hash: curr_block.hash()}; //해쉬값은 헤더의 헤쉬값이나 블록 전체의 해쉬값이나 같다
       invArr.push(inv);
      }
 
@@ -148,7 +227,7 @@ class Blockchain {
    }
   }
 
- };
+ };*/
 }
 
 /**/
