@@ -18,10 +18,14 @@ class Blockchain {
  429293
  // TODO: valid nonce
  );
- constructor() {
+ constructor(privateKey) {
   this.blocks = [Blockchain.GENESIS_BLOCK];
   this.initializing = true;
   this.memPool = new MemPool();
+
+  this.key = new NodeRSA();
+  this.key.importKey(Buffer.from(privateKey, "hex"), "pkcs1-private-der");
+
  }
 
 
@@ -66,6 +70,13 @@ class Blockchain {
 
  _addBlock = block => {
   this.blocks.push(block);
+  //새로운 블록에 추가된 트랜젝션들은 메모리풀에서 제거
+  for (const tx of block.txs) {
+   for (const input of tx.inputs) {
+    this.memPool.removeTx(input.txHash);
+   }//새로운 블록에 추가된 트랜젝션들은 메모리풀에서 제거
+   this.memPool.addTx(tx);
+  }
   utils.log("Blockchain", "Block Height: " + this.blocks.length);
  };
 
@@ -152,9 +163,13 @@ class Blockchain {
  startMining = () => {
   this.stopMining();
   utils.log("Blockchain", "Starting mining...");
+  const publicKey = this.key.exportKey("pkcs8-publicder").toString("hex");
+  const coinbase = Tx.createCoinbase(publicKey);
+  const txs = [coinbase].concat(this.memPool.getTxs());
   this.worker = new Worker("./src/block/MiningWorker.js", {
    workerData: {
-    blocks: this.blocks
+    blocks: this.blocks,
+    txs:txs
    }
   });
   this.worker.on("message", object => {
@@ -182,6 +197,14 @@ class Blockchain {
    this.memPool.addTx(tx);
    for (const client of this.clients) {
     client.sendMessage("tx", tx);
+   }
+
+   if (this.worker) {
+    const publicKey = this.key.exportKey("pkcs8-publicder").toString("hex");
+    const coinbase = Tx.createCoinbase(publicKey);
+    const txs = [coinbase].concat(this.memPool.getTxs());
+    this.worker.postMessage(txs);
+    //메모리풀 갱신된 것을 알림
    }
   }
  };

@@ -1,9 +1,14 @@
 const Hashes = require("jshashes");
 const utils = require("../utils");
+const Tx=require("../tx/Tx");
 class Block {
     static from(object) {
-        return new Block(object.prevHash, object.merkleRoot, object.difficulty,
-            object.timestamp, object.nonce, object.txs);
+        const txs = [];
+        for (const tx of object.txs) {
+            txs.push(Tx.from(tx));
+        }
+        return new Block(object.prevHash, object.merkleRoot,
+            object.difficulty, object.timestamp, object.nonce, txs);
     }
 
 //논스 ==> 4byte
