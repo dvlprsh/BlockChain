@@ -1,7 +1,7 @@
 const {isMainThread, workerData, parentPort} = require('worker_threads');
 const MerkleTree = require('@garbados/merkle-tree');
 const Block = require("./Block");
-
+const Tx = require("../tx/Tx");
 //백그라운드 스레드에서만 실행한다
 if (!isMainThread) {
     const blocks = workerData.blocks;

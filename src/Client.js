@@ -51,46 +51,6 @@ class Client {
     };
 
 
-/*out
-    _sendMessage = connection => {
-        const data = {
-            publicKey: PubKey,
-            cipher: this._encrypt("Hello")
-        };
-        connection.sendUTF(JSON.stringify(data))
-    };
-
-    _encrypt = plain => {
-        // TODO
-
-        const key = new NodeRSA();
-        const text=plain;
-        //const publicKey = Buffer.from(data.publicKey, "hex");
-        const privateKey = Buffer.from(PrivKey, "hex");
-        key.importKey(privateKey, "pkcs1-private-der");
-        const encrypted = key.encryptPrivate(Buffer.from(text, "utf8"));
-        //console.log('encrypted: ', encrypted);
-        //const decrypted = key.decrypt(encrypted, 'utf8');
-        //console.log('decrypted: ', decrypted);
-        return encrypted.toString("hex");
-    };
-out*/
-
-
-/*out3
-    _sendMessage = connection => {
-        const data = {
-            publicKey: PubKey,
-            plain: "Hello",
-            signature: this._sign("Hello")
-        };
-        connection.sendUTF(JSON.stringify(data))
-    };
-
- out3*/
-
-
-
     sendMessage = (type, value) => {
         if (this.connection && this.connection.connected) {
             const data = {

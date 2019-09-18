@@ -5,15 +5,15 @@ const Client = require("./Client");
 const Block = require("./block/Block");
 const utils=require("./utils");
 const {Worker} = require('worker_threads');
-
+const Tx=require("./tx/Tx");
 const MemPool = require("./tx/MemPool");
-
+const NodeRSA = require("node-rsa");
 
 class Blockchain {
  static GENESIS_BLOCK = new Block(
  "0000000000000000000000000000000000000000000000000000000000000000",
  "0000000000000000000000000000000000000000000000000000000000000000",
- "00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+ "00008fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
  1231006505,
  429293
  // TODO: valid nonce
@@ -60,7 +60,7 @@ class Blockchain {
   client.on("headers", this._onHeaders);
   client.on("getdata", this._onGetdata);
   client.on("block", this._onBlock);
-  client.on("tx", this._onTx); //0903
+  client.on("tx", this._onTx); //0903 //거래가 생성됐을때 전파
   client.on("connected", () => {
       client.sendMessage("getheaders", null);  //다른 노드들이랑 연결이 되자마자 getHeaders메세지 날림 (헤더 받아오기)
     });
@@ -68,14 +68,17 @@ class Blockchain {
   return client;
  };
 
+
  _addBlock = block => {
   this.blocks.push(block);
-  //새로운 블록에 추가된 트랜젝션들은 메모리풀에서 제거
   for (const tx of block.txs) {
    for (const input of tx.inputs) {
     this.memPool.removeTx(input.txHash);
-   }//새로운 블록에 추가된 트랜젝션들은 메모리풀에서 제거
+   }
    this.memPool.addTx(tx);
+  }
+  for (const client of this.clients) {
+   client.sendMessage("block", block);
   }
   utils.log("Blockchain", "Block Height: " + this.blocks.length);
  };
@@ -127,7 +130,7 @@ class Blockchain {
  };
  _onBlock = (connection, data) => {
   const newBlock = Block.from(data);
-  if (newBlock.validate()) {
+  if (newBlock.validate(this.memPool)) {
    const lastBlock = this.blocks[this.blocks.length - 1];
    if (lastBlock.hash() === newBlock.prevHash) {
     this._addBlock(newBlock);
@@ -165,6 +168,7 @@ class Blockchain {
   utils.log("Blockchain", "Starting mining...");
   const publicKey = this.key.exportKey("pkcs8-publicder").toString("hex");
   const coinbase = Tx.createCoinbase(publicKey);
+
   const txs = [coinbase].concat(this.memPool.getTxs());
   this.worker = new Worker("./src/block/MiningWorker.js", {
    workerData: {
@@ -193,7 +197,7 @@ class Blockchain {
 
  _onTx = (connection, data) => {
   const tx = Tx.from(data);
-  if (tx.validate()) {
+  if (tx.validate(this.memPool)) {
    this.memPool.addTx(tx);
    for (const client of this.clients) {
     client.sendMessage("tx", tx);
@@ -209,65 +213,7 @@ class Blockchain {
   }
  };
 
-//connection--응답
- //블록 내용을 알고 있을 때에만 block 데이터를 보내줘야 함
- /*
- _onGetdata = (connection, invs) => {
-  for (const inv of invs) {
-   const hash = inv.hash;
-   for (const block of this.blocks) {
-    if (block.hash() === hash) {
-     this.server.on("getdata", this._onGetdata);
-    }
-   }
-  }
- };
-*/
- /*
- _onBlock = (connection, data) => {
-  const newBlock = Block.from(data);
-  if (newBlock.validate()) {
-   //lastBlock--로컬의 마지막 블록
 
-
-   const lastBlock = this.blocks[this.blocks.length - 1];
-   if (lastBlock.hash() === newBlock.prevHash) {
-    this._addBlock(newBlock);
-    //헤더가 initializing 중인지
-    if (this.initializing) {
-     //이 조건에서만 헤더 다운로드가 완료되었는지 알 수 있는것
-     this.initializing = false;
-     utils.log("Blockchain", "Finished downloading headers");
-     // TODO: send getdata message
-     const invArr=[];
-
-     //let inv={type:2, hash: newBlock.hash()};
-     let inv;
-     let curr_block;
-     for(let i=0; i< this.blocks.length; i++){
-      curr_block=Block.from(this.blocks[i]);
-      inv={type:2, hash: curr_block.hash()}; //해쉬값은 헤더의 헤쉬값이나 블록 전체의 해쉬값이나 같다
-      invArr.push(inv);
-     }
-
-     this.server.sendMessage(connection, "getdata", invArr);
-    }
-   } else if (!this.initializing) {
-  // TODO: replace header with newBlock
-    let index=0;
-    for (const block of this.blocks) {
-     index++;
-     if (block.hash() === newBlock.prevHash) {
-      this.blocks[index]=(newBlock);
-      console.log("testlog---header pushed");
-     }
-
-    }
-
-   }
-  }
-
- };*/
 }
 
 /**/

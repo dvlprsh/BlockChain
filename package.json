@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@garbados/merkle-tree": "^1.0.3-alpha",
     "bip39": "^3.0.2",
     "jshashes": "^1.0.7",
     "local-ipv4-address": "0.0.2",

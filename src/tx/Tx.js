@@ -40,7 +40,17 @@ class Tx {
         return new Hashes.SHA256().hex(this.toHex());
     }
 
-    validate() {
+    validate(memPool) {
+
+        const txs=memPool.getTxs();
+        for (const input of this.inputs) {
+            // TODO: find utxo in memPool
+            // TODO: run scripts
+
+
+
+
+        }
         return true;
     }
 
@@ -57,6 +67,28 @@ class Tx {
         }
         return signature;
     }
+
+    static createCoinbase(publicKey) {
+        const input = new Input(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            -1,
+            new Script()
+        );
+        const pubKeyHash = new Hashes.RMD160().hex(new Hashes.SHA256().hex(publicKey));
+        const script = new Script([
+            Script.OP_DUP,
+            Script.OP_HASH160,
+            pubKeyHash,
+            Script.OP_EQUALVERIFY,
+            Script.OP_CHECKSIG
+        ]);
+        const output = new Output(50 * 10 ** 8, script);
+        const tx = new Tx([input], [output]);
+        return tx;
+    }
+
+
+
 }
 
 
