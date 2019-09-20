@@ -130,6 +130,7 @@ class Blockchain {
  };
  _onBlock = (connection, data) => {
   const newBlock = Block.from(data);
+  console.log("onBlock validate test :"+newBlock.validate(this.memPool));
   if (newBlock.validate(this.memPool)) {
    const lastBlock = this.blocks[this.blocks.length - 1];
    if (lastBlock.hash() === newBlock.prevHash) {
@@ -197,18 +198,16 @@ class Blockchain {
 
  _onTx = (connection, data) => {
   const tx = Tx.from(data);
-  if (tx.validate(this.memPool)) {
-   this.memPool.addTx(tx);
+  if (tx.validate()) {
+   this.memPool.addTx(tx, true);
    for (const client of this.clients) {
     client.sendMessage("tx", tx);
    }
-
    if (this.worker) {
     const publicKey = this.key.exportKey("pkcs8-publicder").toString("hex");
     const coinbase = Tx.createCoinbase(publicKey);
     const txs = [coinbase].concat(this.memPool.getTxs());
     this.worker.postMessage(txs);
-    //메모리풀 갱신된 것을 알림
    }
   }
  };

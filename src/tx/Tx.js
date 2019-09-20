@@ -39,17 +39,25 @@ class Tx {
     hash() {
         return new Hashes.SHA256().hex(this.toHex());
     }
-
+    //트랜잭션을 찾고
+    //그 다음 거기에 들어있는 utxo를 찾음
     validate(memPool) {
-
-        const txs=memPool.getTxs();
+        //console.log("Tx.validate--test");
         for (const input of this.inputs) {
-            // TODO: find utxo in memPool
-            // TODO: run scripts
-
-
-
-
+            const tx = memPool.txs[input.txHash];
+            if (tx) {
+                const utxo = tx.outputs[input.index];
+                if (utxo) {
+                    const scriptRunner = new ScriptRunner(utxo, input, this);
+                    if (scriptRunner.run() === false) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
         }
         return true;
     }
