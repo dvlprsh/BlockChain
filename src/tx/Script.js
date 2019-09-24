@@ -4,6 +4,8 @@ class Script {
     static OP_EQUALVERIFY = "88";
     static OP_CHECKSIG = "ac";
 
+    static OP_RETURN="6a"
+
     static from(object) {
         return new Script(object.values);
     }

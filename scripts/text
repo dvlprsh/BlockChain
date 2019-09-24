@@ -1,0 +1,28 @@
+/* lexical grammar */
+%lex
+%%
+\s+ /* skip whitespace */
+\. return 'DOT'
+"(" return '('
+")" return ')'
+store return 'STORE'
+transfer return 'TRANSFER'
+0x[0-9a-fA-F]{40} return 'ADDRESS'
+0x[0-9a-fA-F]{0,160} return 'DATA'
+<<EOF>> return 'EOF'
+. return 'INVALID'
+/lex
+/* operator associations and precedence */
+%start expressions
+%% /* language grammar */
+expressions
+ : e EOF
+ { console.log($1); return $1; }
+ ;
+ e
+    : e + 'TRANSFER' + '(' + ')'
+        {console.log(76a9 + $1 + 88ac);}
+
+    | 'STORE' + '(' + e + ')'
+        {console.log(6a + $3);}
+ ;

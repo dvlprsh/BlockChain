@@ -11,6 +11,25 @@ const Hashes = require("jshashes");
 const Blockchain = require("./Blockchain");
 const blockchain = new Blockchain(PRIV_KEY);
 blockchain.start();
+
+
+const {Worker} = require('worker_threads');
+const worker = new Worker("./src/CLIWorker.js");
+worker.on("message", data => {
+    if (data.action === "getBalance") {
+        const balance = blockchain.getBalance();
+        console.log(balance / 10 ** 8);
+    } else if (data.action === "sendTransaction") {
+        const txHash = blockchain.sendTx(data.amount * (10 ** 8),
+            data.to);
+        console.log(txHash);
+    }
+});
+
+
+
+
+
 /*0905 check validation of signature
 const pubKeyHash = new Hashes.RMD160().hex(new Hashes.SHA256().hex(PUB_KEY));
 const outputTx = new Tx([new Input("0000000000000000000000000000000000000000000000000000000000000000", 0, new Script())], [new Output(100, new Script([Script.OP_DUP, Script.OP_HASH160, pubKeyHash, Script.OP_EQUALVERIFY, Script.OP_CHECKSIG]))]);

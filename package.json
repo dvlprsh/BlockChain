@@ -17,6 +17,7 @@
     "local-ipv4-address": "0.0.2",
     "node-fetch": "^2.6.0",
     "node-rsa": "^1.0.5",
+    "readline-sync": "^1.4.10",
     "websocket": "^1.0.29"
   }
 }
