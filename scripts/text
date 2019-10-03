@@ -17,12 +17,12 @@ transfer return 'TRANSFER'
 %% /* language grammar */
 expressions
  : e EOF
- { console.log($1); return $1; }
+ { console.log($1); return $1; }  //괄호 안의 부분은 javascript 코드
  ;
  e
-    : e + 'TRANSFER' + '(' + ')'
-        {console.log(76a9 + $1 + 88ac);}
+    : 'ADDRESS' + 'TRANSFER' + '(' + ')'
+        {$$=$1+$2}   //괄호 안의 부분은 javascript 코드
 
-    | 'STORE' + '(' + e + ')'
-        {console.log(6a + $3);}
+    | 'STORE' + '(' + 'DATA' + ')'
+        {$$=$1+$3}   //괄호 안의 부분은 javascript 코드
  ;

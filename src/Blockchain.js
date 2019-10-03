@@ -8,7 +8,7 @@ const {Worker} = require('worker_threads');
 const Tx=require("./tx/Tx");
 const MemPool = require("./tx/MemPool");
 const NodeRSA = require("node-rsa");
-
+const Input=require("./Input");
 class Blockchain {
  static GENESIS_BLOCK = new Block(
  "0000000000000000000000000000000000000000000000000000000000000000",
@@ -211,8 +211,61 @@ class Blockchain {
    }
   }
  };
-
-
+ getBalance =()=>{
+  const publicKey = this.key.exportKey("pkcs8-public-der").toString("hex");
+  const pubKeyHash = new Hashes.RMD160().hex(new Hashes.SHA256().hex(publicKey));
+  let balance = 0;
+  for (const tx of this.memPool.getTxs()) {
+   for (const output of tx.outputs) {
+    for (const value of output.script.values) {
+     if (value === pubKeyHash) {
+      balance += output.amount;
+     }
+    }
+   }
+  }
+  return balance;
+ };
+ sendTx = (amount, to) => {
+  const balance = this.getBalance();
+  if (amount <= balance) {
+   const privateKey = this.key.exportKey("pkcs1-private-der").toString("hex");
+   const publicKey = this.key.exportKey("pkcs8-public-der").toString("hex");
+   const pubKeyHash = new Hashes.RMD160().hex(new Hashes.SHA256().hex(publicKey));
+   const inputs = [];
+   let utxoAmount = 0;
+   for (const txHash of Object.keys(this.memPool.txs)) {
+    if (amount < utxoAmount) {
+     break;
+    }
+    const tx = this.memPool.txs[txHash];
+    for (let i = 0; i < tx.outputs.length; i++) {
+     const output = tx.outputs[i];
+     for (const value of output.script.values) {
+      if (value === pubKeyHash) {
+       const input = new Input(txHash, i, new Script());
+       inputs.push(input);
+       utxoAmount += output.amount;
+       break;
+      }
+     }
+    }
+   }
+   const outputs = [];
+   outputs.push(
+       new Output(amount, new Script([Script.OP_DUP, Script.OP_HASH160, to, Script.OP_EQUALVERIFY, Script.OP_CHECKSIG])),
+       new Output(utxoAmount - amount, new Script([Script.OP_DUP, Script.OP_HASH160, pubKeyHash, Script.OP_EQUALVERIFY, Script.OP_CHECKSIG])),
+   );
+   const tx = new Tx(inputs, outputs);
+   tx.sign(privateKey);
+   for (const client of this.clients) {
+    client.sendMessage("tx", tx);
+   }
+   return tx.hash();
+  } else {
+   return "Not enough balance";
+  }
+ };
 }
 
 /**/
